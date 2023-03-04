@@ -1,6 +1,7 @@
 const express = require("express");
 const cors = require("cors");
 const { MongoClient, ServerApiVersion } = require("mongodb");
+const jwt = require("jsonwebtoken");
 require("dotenv").config();
 const port = process.env.PORT || 5000;
 const app = express();
@@ -26,6 +27,7 @@ async function run() {
     const bookingsCollection = client
       .db("doctorsPortal")
       .collection("bookings");
+    const usersCollection = client.db("doctorsPortal").collection("users");
 
     // use Agregate to query multiple collection and then merge data
     app.get("/appointmentOptions", async (req, res) => {
@@ -105,6 +107,14 @@ async function run() {
     //   res.send(options);
     // });
 
+    app.get("/bookings", async (req, res) => {
+      const email = req.query.email;
+      // console.log(email);
+      const query = { email: email };
+      const bookings = await bookingsCollection.find(query).toArray();
+      res.send(bookings);
+    });
+
     app.post("/bookings", async (req, res) => {
       const booking = req.body;
       console.log(booking);
@@ -119,6 +129,27 @@ async function run() {
         return res.send({ acknowledged: false, message });
       }
       const result = await bookingsCollection.insertOne(booking);
+      res.send(result);
+    });
+
+    // token
+    app.get("/jwt", async (req, res) => {
+      const email = req.query.email;
+      const query = { email: email };
+      const user = await usersCollection.findOne(query);
+      if (user) {
+        const token = jwt.sign({ email }, process.env.ACCESS_TOKEN, {
+          expiresIn: "1h",
+        });
+        return res.send({ accessToken: token });
+      }
+      // console.log(user);
+      res.status(403).send({ accessToken: "" });
+    });
+
+    app.post("/user", async (req, res) => {
+      const user = req.body;
+      const result = await usersCollection.insertOne(user);
       res.send(result);
     });
   } finally {
