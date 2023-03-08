@@ -18,6 +18,15 @@ const client = new MongoClient(uri, {
   serverApi: ServerApiVersion.v1,
 });
 
+function verifyJWT(req, res, next) {
+  console.log("token inside VerifyJWT", req.headers.authorization);
+  const authheader = req.headers.authorization;
+  if (!authheader) {
+    return res.send(401).send("unAuthorized access");
+  }
+  const token = authheader.split(" ")[1];
+}
+
 async function run() {
   try {
     const appointmentOptionCollection = client
@@ -60,54 +69,54 @@ async function run() {
 
     // --------------------------------------------------------
     // Optional
-    // app.get("/v2/appointmentOptions", async (req, res) => {
-    //   const date = req.query.date;
-    //   const options = await appointmentOptionCollection
-    //     .aggregate([
-    //       {
-    //         $lookup: {
-    //           from: "bookings",
-    //           localField: "name",
-    //           foreignField: "treatment",
-    //           pipeline: [
-    //             {
-    //               $match: {
-    //                 $expr: {
-    //                   $eq: ["$appointmentDate", date],
-    //                 },
-    //               },
-    //             },
-    //           ],
-    //           as: "booked",
-    //         },
-    //       },
-    //       {
-    //         $project: {
-    //           name: 1,
-    //           slots: 1,
-    //           booked: {
-    //             $map: {
-    //               input: "$booked",
-    //               as: "book",
-    //               in: "$$book.slot",
-    //             },
-    //           },
-    //         },
-    //       },
-    //       {
-    //         $project: {
-    //           name: 1,
-    //           slots: {
-    //             $setDifference: ["$slots", "$booked"],
-    //           },
-    //         },
-    //       },
-    //     ])
-    //     .toArray();
-    //   res.send(options);
-    // });
+    app.get("/v2/appointmentOptions", async (req, res) => {
+      const date = req.query.date;
+      const options = await appointmentOptionCollection
+        .aggregate([
+          {
+            $lookup: {
+              from: "bookings",
+              localField: "name",
+              foreignField: "treatment",
+              pipeline: [
+                {
+                  $match: {
+                    $expr: {
+                      $eq: ["$appointmentDate", date],
+                    },
+                  },
+                },
+              ],
+              as: "booked",
+            },
+          },
+          {
+            $project: {
+              name: 1,
+              slots: 1,
+              booked: {
+                $map: {
+                  input: "$booked",
+                  as: "book",
+                  in: "$$book.slot",
+                },
+              },
+            },
+          },
+          {
+            $project: {
+              name: 1,
+              slots: {
+                $setDifference: ["$slots", "$booked"],
+              },
+            },
+          },
+        ])
+        .toArray();
+      res.send(options);
+    });
 
-    app.get("/bookings", async (req, res) => {
+    app.get("/bookings", verifyJWT, async (req, res) => {
       const email = req.query.email;
       // console.log(email);
       const query = { email: email };
